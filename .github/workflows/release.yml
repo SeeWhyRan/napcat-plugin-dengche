@@ -38,6 +38,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Extract plugin id
+        id: plugin
+        run: |
+          PLUGIN_ID=$(node -e "console.log(require('./package.json').name)")
+          echo "plugin_id=$PLUGIN_ID" >> $GITHUB_OUTPUT
+
       - name: Get version
         id: version
         run: |
@@ -63,9 +69,9 @@ jobs:
         run: pnpm run build
 
       - name: Prepare release package
-        env:
-          PLUGIN_NAME: napcat-plugin-template
         run: |
+          PLUGIN_ID="${{ steps.plugin.outputs.plugin_id }}"
+
           # 创建临时目录用于组织文件
           mkdir -p release
 
@@ -76,12 +82,12 @@ jobs:
 
           # 进入临时目录并压缩
           cd release
-          zip -r ../${PLUGIN_NAME}.zip index.mjs package.json webui
+          zip -r ../${PLUGIN_ID}.zip index.mjs package.json webui
 
       - name: Verify zip contents
         run: |
-          PLUGIN_NAME="napcat-plugin-template"
-          unzip -l ${PLUGIN_NAME}.zip
+          PLUGIN_ID="${{ steps.plugin.outputs.plugin_id }}"
+          unzip -l ${PLUGIN_ID}.zip
 
       - name: Collect git log
         id: gitlog
@@ -117,10 +123,10 @@ jobs:
         run: |
           if [ -n "$AI_API_KEY" ] && [ -n "$AI_API_URL" ]; then
             echo "available=true" >> $GITHUB_OUTPUT
-            echo "✅ 检测到 AI 配置，将使用 AI 生成 Release Note"
+            echo "Detected AI config, will generate release note by AI"
           else
             echo "available=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ 未配置 AI_API_KEY / AI_API_URL，将使用默认 Release Note"
+            echo "AI_API_KEY / AI_API_URL not configured, will use default release note"
           fi
         env:
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
@@ -140,7 +146,7 @@ jobs:
           COMMITS=$(cat commits.txt)
           MODEL="${AI_MODEL:-gpt-4o-mini}"
 
-          echo "🤖 使用 AI 生成 Release Note (model: $MODEL)"
+          echo "Generate release note by AI (model: $MODEL)"
 
           # 获取文件变更统计和代码 diff
           SUMMARY_LINE=$(git diff --stat "$PREV_TAG"..HEAD | tail -1 || echo "No changes")
@@ -207,13 +213,13 @@ jobs:
               sed -i "s/{VERSION}/$CURRENT_TAG/g" CHANGELOG.md
               sed -i "s/{PREV_VERSION}/$PREV_TAG/g" CHANGELOG.md
               echo "ai_success=true" >> $GITHUB_OUTPUT
-              echo "✅ AI Release Note 生成成功"
+              echo "AI release note generated"
             else
-              echo "⚠️ AI 返回内容为空，将使用默认 Release Note"
+              echo "AI returned empty content, fallback to default"
               echo "ai_success=false" >> $GITHUB_OUTPUT
             fi
           else
-            echo "⚠️ AI API 请求失败 (HTTP $HTTP_CODE)，将使用默认 Release Note"
+            echo "AI API request failed (HTTP $HTTP_CODE), fallback to default"
             echo "Response: $BODY"
             echo "ai_success=false" >> $GITHUB_OUTPUT
           fi
@@ -232,7 +238,7 @@ jobs:
             echo "### 更新内容" >> CHANGELOG.md
             echo "$COMMITS" >> CHANGELOG.md
           fi
-          echo "📝 使用默认 Release Note"
+          echo "Using default release note"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -242,7 +248,7 @@ jobs:
           body_path: CHANGELOG.md
           draft: false
           files: |
-            napcat-plugin-template.zip
+            ${{ steps.plugin.outputs.plugin_id }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -264,4 +270,4 @@ jobs:
                 version: '${{ steps.version.outputs.version }}'
               }
             })
-            console.log('✅ 已触发 update-index.yml 工作流')
+            console.log('Triggered update-index.yml workflow')
