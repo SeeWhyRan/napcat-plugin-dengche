@@ -1,0 +1,32 @@
+{
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "baseUrl": ".",
+        "paths": {
+            "napcat-types/napcat-onebot/network/plugin/types": ["src/shims/napcat-types/napcat-onebot/network/plugin/types.d.ts"],
+            "napcat-types/napcat-onebot/event/index": ["src/shims/napcat-types/napcat-onebot/event/index.d.ts"],
+            "napcat-types/napcat-onebot": ["src/shims/napcat-types/napcat-onebot/index.d.ts"]
+        },
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "declaration": false,
+        "outDir": "dist",
+        "rootDir": "src",
+        "resolveJsonModule": true,
+        "allowSyntheticDefaultImports": true,
+        "forceConsistentCasingInFileNames": true,
+        "noUnusedLocals": false,
+        "noUnusedParameters": false
+    },
+    "include": [
+        "src/**/*.ts",
+        "src/**/*.json"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist"
+    ]
+}

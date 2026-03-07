@@ -1,0 +1,47 @@
+{
+  "name": "napcat-plugin-dengche",
+  "plugin": "等车",
+  "version": "1.0.1",
+  "type": "module",
+  "main": "index.mjs",
+  "description": "群聊等车列表管理插件：等车 / 跑路 / 发车 / 等车列表（含管理员强制增删与开关）",
+  "author": "踏水寻",
+  "license": "MIT",
+  "keywords": [
+    "napcat",
+    "plugin",
+    "qq",
+    "group",
+    "dengche",
+    "waiting-list"
+  ],
+  "napcat": {
+    "tags": [
+      "工具"
+    ],
+    "minVersion": "4.14.0",
+    "homepage": ""
+  },
+  "dependencies": {
+    "napcat-types": "0.0.17"
+  },
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^15.3.1",
+    "@types/express": "^5.0.6",
+    "@types/node": "^20.19.33",
+    "napcat-plugin-debug-cli": "^1.2.8",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.1",
+    "ws": "^8.19.0"
+  },
+  "scripts": {
+    "build": "vite build",
+    "build:webui": "cd src/webui && pnpm install && pnpm run build",
+    "dev:webui": "cd src/webui && pnpm run dev",
+    "watch": "vite build --watch",
+    "dev": "vite build --watch",
+    "push": "vite build",
+    "deploy": "vite build",
+    "typecheck": "tsc --noEmit"
+  }
+}
