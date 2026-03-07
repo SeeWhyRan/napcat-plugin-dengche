@@ -251,23 +251,3 @@ jobs:
             ${{ steps.plugin.outputs.plugin_id }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # 触发索引更新工作流
-      # 注意：默认 GITHUB_TOKEN 创建的 Release 不会触发 on.release 事件
-      # 因此需要手动通过 workflow_dispatch 触发 update-index.yml
-      - name: Trigger index update
-        if: success()
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'update-index.yml',
-              ref: 'main',
-              inputs: {
-                version: '${{ steps.version.outputs.version }}'
-              }
-            })
-            console.log('Triggered update-index.yml workflow')

@@ -1,9 +1,8 @@
-name: 自动更新插件索引
+name: 自动更新插件索引（手动）
 
-# 当 Release 发布时触发（插件作者 push tag → release.yml 构建发布 → 触发本工作流）
+# 说明：当前仅保留手动触发（workflow_dispatch）。
+# 如后续需要恢复“Release 发布后自动更新索引”，再把 on.release 加回即可。
 on:
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       version:
@@ -51,13 +50,17 @@ jobs:
           MIN_VERSION=$(node -e "console.log(require('./package.json').napcat?.minVersion || '4.14.0')")
           HOMEPAGE=$(node -e "console.log(require('./package.json').napcat?.homepage || require('./package.json').homepage || '')")
 
-          # 获取版本号
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.version }}" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-          elif [ "${{ github.event_name }}" = "release" ]; then
-            VERSION="${{ github.event.release.tag_name }}"
+          # 获取版本号（当前仅 workflow_dispatch）
+          # 规则：优先使用输入 version；否则使用仓库中最新 v* tag；再否则使用 package.json.version
+          VERSION_INPUT="${{ github.event.inputs.version }}"
+          if [ -n "$VERSION_INPUT" ]; then
+            VERSION="$VERSION_INPUT"
           else
-            VERSION="v$(node -e "console.log(require('./package.json').version)")"
+            git fetch --tags --force >/dev/null 2>&1 || true
+            VERSION=$(git tag -l "v*" --sort=version:refname | tail -1)
+            if [ -z "$VERSION" ]; then
+              VERSION="v$(node -e \"console.log(require('./package.json').version)\")"
+            fi
           fi
           CLEAN_VERSION=$(echo $VERSION | sed 's/^v//')
 
@@ -81,24 +84,24 @@ jobs:
           echo "min_version=$MIN_VERSION" >> $GITHUB_OUTPUT
           echo "tag_name=$VERSION" >> $GITHUB_OUTPUT
 
-          echo "📦 Plugin: $PLUGIN_ID v$CLEAN_VERSION"
-          echo "📥 Download: $DOWNLOAD_URL"
+          echo "Plugin: $PLUGIN_ID v$CLEAN_VERSION"
+          echo "Download: $DOWNLOAD_URL"
 
       - name: Verify release asset exists
         run: |
-          echo "🔍 验证下载链接: ${{ steps.meta.outputs.download_url }}"
+          echo "Verify download url: ${{ steps.meta.outputs.download_url }}"
           HTTP_CODE=$(curl -sL -o /dev/null -w "%{http_code}" "${{ steps.meta.outputs.download_url }}")
           if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 400 ]; then
-            echo "✅ 下载链接有效 (HTTP $HTTP_CODE)"
+            echo "Download url ok (HTTP $HTTP_CODE)"
           else
-            echo "❌ 下载链接无效 (HTTP $HTTP_CODE)"
-            echo "⚠️ Release 资产可能尚未上传完成，等待 30 秒后重试..."
+            echo "Download url invalid (HTTP $HTTP_CODE)"
+            echo "Release asset may not be ready, retry in 30 seconds..."
             sleep 30
             HTTP_CODE=$(curl -sL -o /dev/null -w "%{http_code}" "${{ steps.meta.outputs.download_url }}")
             if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 400 ]; then
-              echo "✅ 重试成功 (HTTP $HTTP_CODE)"
+              echo "Retry ok (HTTP $HTTP_CODE)"
             else
-              echo "❌ 重试仍然失败 (HTTP $HTTP_CODE)，跳过索引更新"
+              echo "Retry failed (HTTP $HTTP_CODE), abort"
               exit 1
             fi
           fi
@@ -120,8 +123,8 @@ jobs:
 
           FORK_REPO="${PAT_USER}/${{ env.INDEX_REPO_NAME }}"
           echo "fork_repo=$FORK_REPO" >> $GITHUB_OUTPUT
-          echo "👤 PAT 用户: $PAT_USER"
-          echo "🍴 Fork 仓库: $FORK_REPO"
+          echo "PAT user: $PAT_USER"
+          echo "Fork repo: $FORK_REPO"
 
           # 检查 fork 是否已存在
           HTTP_CODE=$(curl -sS -o /dev/null -w "%{http_code}" \
@@ -129,9 +132,9 @@ jobs:
             "https://api.github.com/repos/${FORK_REPO}")
 
           if [ "$HTTP_CODE" = "200" ]; then
-            echo "✅ Fork 已存在: $FORK_REPO"
+            echo "Fork exists: $FORK_REPO"
           else
-            echo "🍴 Fork 不存在，正在创建..."
+            echo "Fork missing, creating..."
             FORK_RESULT=$(curl -sS -X POST \
               -H "Authorization: token ${GH_TOKEN}" \
               -H "Accept: application/vnd.github+json" \
@@ -144,10 +147,10 @@ jobs:
               echo "$FORK_RESULT" | jq .
               exit 1
             fi
-            echo "✅ Fork 创建成功: $FORK_FULL_NAME"
+            echo "Fork created: $FORK_FULL_NAME"
 
             # 等待 fork 完成初始化
-            echo "⏳ 等待 fork 初始化..."
+            echo "Waiting for fork initialization..."
             sleep 10
           fi
 
@@ -156,7 +159,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.INDEX_PAT }}
         run: |
-          echo "🔄 同步 fork 到上游最新..."
+          echo "Sync fork with upstream..."
           SYNC_RESULT=$(curl -sS -X POST \
             -H "Authorization: token ${GH_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
@@ -207,15 +210,15 @@ jobs:
             // 查找是否已存在
             const idx = data.plugins.findIndex(p => p.id === pluginId);
             if (idx >= 0) {
-              console.log('📝 更新已有插件: ' + pluginId);
+              console.log('Update existing: ' + pluginId);
               data.plugins[idx] = newPlugin;
             } else {
-              console.log('➕ 新增插件: ' + pluginId);
+              console.log('Add new: ' + pluginId);
               data.plugins.push(newPlugin);
             }
 
             fs.writeFileSync(process.env.INDEX_FILE_NAME, JSON.stringify(data, null, 2) + '\n');
-            console.log('✅ plugins.v4.json 已更新');
+            console.log('plugins.v4.json updated');
           "
 
       # ── 通过 fork 提交 PR 到官方索引仓库 ─────────────────────────
@@ -228,9 +231,9 @@ jobs:
           commit-message: "chore: update ${{ steps.meta.outputs.plugin_id }} to v${{ steps.meta.outputs.version }}"
           branch: "auto-update/${{ steps.meta.outputs.plugin_id }}-v${{ steps.meta.outputs.version }}"
           delete-branch: true
-          title: "🔌 [${{ steps.meta.outputs.plugin_name }}] 更新至 v${{ steps.meta.outputs.version }}"
+          title: "[${{ steps.meta.outputs.plugin_name }}] 更新至 v${{ steps.meta.outputs.version }}"
           body: |
-            ## 🤖 自动更新插件索引
+            ## 自动更新插件索引
 
             | 字段 | 值 |
             |------|-----|
