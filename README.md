@@ -116,6 +116,27 @@ pnpm run dev
 # WebUI 前端开发服务器
 pnpm run dev:webui
 ```
-## 📄 许可证
+
+## Git 同步脚本（本地）
+
+仓库内提供一个简单脚本用于在本地选择：推送到 GitHub 或从 GitHub 拉取。
+
+```bash
+# 交互菜单（推荐）
+./scripts/git-sync.sh
+
+# 推送到 GitHub（如检测到改动会提示是否先提交）
+./scripts/git-sync.sh push
+
+# 从 GitHub 拉取（仅允许 fast-forward，避免自动产生 merge commit）
+./scripts/git-sync.sh pull
+
+# 查看状态
+./scripts/git-sync.sh status
+```
+
+默认：分支 `main`，远程名 `origin`。
+
+## 许可证
 
 MIT License
