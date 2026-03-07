@@ -30,11 +30,15 @@ export async function handleDengcheCommand(
 
     const groupEnabled = pluginState.isGroupEnabled(groupKey);
 
-    // 关闭情况下除了“等车 开/关”其他都不触发
+    const prefix = pluginState.config.commandPrefix || '/';
+
+    // 关闭情况下除了“等车 开/关/帮助”与“等车帮助”外其他都不触发
     if (!groupEnabled) {
-        if (cmd !== '等车') return false;
-        const sub = args[1] || '';
-        if (sub !== '开' && sub !== '关') return false;
+        if (cmd !== '等车' && cmd !== '等车帮助') return false;
+        if (cmd === '等车') {
+            const sub = args[1] || '';
+            if (sub !== '开' && sub !== '关' && sub !== '帮助') return false;
+        }
     }
 
     const getList = () => (data.groups[groupKey] || []);
@@ -42,6 +46,31 @@ export async function handleDengcheCommand(
         data.groups[groupKey] = next;
         saveWaitListData(data);
     };
+
+    // ==================== 帮助命令（成员可用） ====================
+    if (cmd === '等车帮助' || (cmd === '等车' && (args[1] || '') === '帮助')) {
+        const lines: string[] = [];
+        lines.push('等车指令帮助：');
+        lines.push('（说明：以下命令均需加命令前缀，默认“/”，可在配置中修改）');
+        lines.push('');
+        lines.push('成员常用：');
+        lines.push(`- 加入等车：${prefix}等车`);
+        lines.push(`- 退出等车：${prefix}跑路`);
+        lines.push(`- 查看列表：${prefix}等车列表`);
+        lines.push(`- 发车并清空：${prefix}发车`);
+        lines.push('');
+        lines.push('管理员：');
+        lines.push(`- 开启本群：${prefix}等车 开`);
+        lines.push(`- 关闭本群：${prefix}等车 关`);
+        lines.push(`- 强制删除：${prefix}等车列表删除 1（序号从 1 开始）`);
+        lines.push(`- 强制添加：${prefix}等车列表添加 123456 或 ${prefix}等车列表添加 @某人`);
+        lines.push('');
+        lines.push(`当前群状态：${groupEnabled ? '已开启' : '已关闭'}`);
+
+        await sendReply(ctx, event, lines.join('\n'));
+        pluginState.incrementProcessed();
+        return true;
+    }
 
     // ==================== 成员命令 ====================
     if (cmd === '等车') {
