@@ -17,6 +17,11 @@ type ShoutCarDraft = {
     rules: RuleDraft[]
 }
 
+type WaitBroadcastDraft = {
+    enabled: boolean
+    intervalSeconds: number
+}
+
 function normalizeRuleKeyword(s: string): string {
     return (s || '').trim()
 }
@@ -67,6 +72,11 @@ export default function GroupsPage() {
         enabled: false,
         cooldownSeconds: 0,
         rules: [],
+    })
+
+    const [waitBroadcastDraft, setWaitBroadcastDraft] = useState<WaitBroadcastDraft>({
+        enabled: false,
+        intervalSeconds: 600,
     })
 
     const fetchGroups = useCallback(async () => {
@@ -153,6 +163,11 @@ export default function GroupsPage() {
             rules: getRulesFromGroup(g),
         })
 
+        setWaitBroadcastDraft({
+            enabled: Boolean((g as any)?.waitBroadcast?.enabled),
+            intervalSeconds: Number((g as any)?.waitBroadcast?.intervalSeconds) || 600,
+        })
+
         const shouldOpenDrawer = mode === 'mobile' || (typeof window !== 'undefined' && window.innerWidth < 1024)
         if (shouldOpenDrawer) setEditorOpenMobile(true)
     }
@@ -190,6 +205,10 @@ export default function GroupsPage() {
                 cooldownSeconds: Number(shoutCarDraft.cooldownSeconds) || 0,
                 rules: uniqRules,
             },
+            waitBroadcast: {
+                enabled: Boolean(waitBroadcastDraft.enabled),
+                intervalSeconds: Number(waitBroadcastDraft.intervalSeconds) || 0,
+            },
         }
 
         setSaving(true)
@@ -207,6 +226,10 @@ export default function GroupsPage() {
                     shoutCar: {
                         ...(g.shoutCar || {}),
                         ...payload.shoutCar,
+                    },
+                    waitBroadcast: {
+                        ...((g as any).waitBroadcast || {}),
+                        ...(payload as any).waitBroadcast,
                     },
                 }
             }))
@@ -415,6 +438,8 @@ export default function GroupsPage() {
                             setGroupEnabledDraft={setGroupEnabledDraft}
                             shoutCarDraft={shoutCarDraft}
                             setShoutCarDraft={setShoutCarDraft}
+                            waitBroadcastDraft={waitBroadcastDraft}
+                            setWaitBroadcastDraft={setWaitBroadcastDraft}
                             addRule={addRule}
                             removeRule={removeRule}
                             saving={saving}
@@ -446,6 +471,8 @@ export default function GroupsPage() {
                                     setGroupEnabledDraft={setGroupEnabledDraft}
                                     shoutCarDraft={shoutCarDraft}
                                     setShoutCarDraft={setShoutCarDraft}
+                                    waitBroadcastDraft={waitBroadcastDraft}
+                                    setWaitBroadcastDraft={setWaitBroadcastDraft}
                                     addRule={addRule}
                                     removeRule={removeRule}
                                     saving={saving}
@@ -477,6 +504,8 @@ function GroupEditor({
     setGroupEnabledDraft,
     shoutCarDraft,
     setShoutCarDraft,
+    waitBroadcastDraft,
+    setWaitBroadcastDraft,
     addRule,
     removeRule,
     saving,
@@ -489,6 +518,8 @@ function GroupEditor({
     setGroupEnabledDraft: (v: boolean) => void
     shoutCarDraft: ShoutCarDraft
     setShoutCarDraft: React.Dispatch<React.SetStateAction<ShoutCarDraft>>
+    waitBroadcastDraft: WaitBroadcastDraft
+    setWaitBroadcastDraft: React.Dispatch<React.SetStateAction<WaitBroadcastDraft>>
     addRule: () => void
     removeRule: (idx: number) => void
     saving: boolean
@@ -522,6 +553,37 @@ function GroupEditor({
                     />
                     <div className="slider" />
                 </label>
+            </div>
+
+            <div className="border-t border-gray-100 dark:border-gray-800 pt-4" />
+
+            {/* 等车列表广播 */}
+            <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <div className="text-sm font-medium text-gray-800 dark:text-gray-200">启用等车列表广播</div>
+                        <div className="text-xs text-gray-400 mt-0.5">当本群等车列表有人时，按间隔在群里广播</div>
+                    </div>
+                    <label className="toggle">
+                        <input
+                            type="checkbox"
+                            checked={Boolean(waitBroadcastDraft.enabled)}
+                            onChange={(e) => setWaitBroadcastDraft(d => ({ ...d, enabled: e.target.checked }))}
+                        />
+                        <div className="slider" />
+                    </label>
+                </div>
+
+                <div>
+                    <div className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">广播间隔（秒）</div>
+                    <div className="text-xs text-gray-400 mb-2">建议 600；最小 30；0 表示不广播</div>
+                    <input
+                        className="input-field"
+                        type="number"
+                        value={String(waitBroadcastDraft.intervalSeconds ?? 600)}
+                        onChange={(e) => setWaitBroadcastDraft(d => ({ ...d, intervalSeconds: Number(e.target.value) || 0 }))}
+                    />
+                </div>
             </div>
 
             <div className="border-t border-gray-100 dark:border-gray-800 pt-4" />

@@ -64,6 +64,16 @@ export interface ShoutCarKeywordRule {
 }
 
 /**
+ * 等车列表定时广播（分群）配置
+ */
+export interface WaitBroadcastGroupConfig {
+    /** 是否启用本群等车列表定时广播 */
+    enabled?: boolean;
+    /** 广播间隔（秒） */
+    intervalSeconds?: number;
+}
+
+/**
  * 群配置
  */
 export interface GroupConfig {
@@ -71,6 +81,8 @@ export interface GroupConfig {
     enabled?: boolean;
     /** 喊车（@全体组队）配置 */
     shoutCar?: ShoutCarGroupConfig;
+    /** 等车列表定时广播配置 */
+    waitBroadcast?: WaitBroadcastGroupConfig;
     // TODO: 在这里添加群级别的配置项
 }
 

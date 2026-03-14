@@ -36,6 +36,11 @@ export interface GroupConfig {
             atAllWhenMember?: boolean
         }>
     }
+
+    waitBroadcast?: {
+        enabled?: boolean
+        intervalSeconds?: number
+    }
 }
 
 export interface GroupInfo {
@@ -45,6 +50,7 @@ export interface GroupInfo {
     max_member_count: number
     enabled: boolean
     shoutCar?: GroupConfig['shoutCar']
+    waitBroadcast?: GroupConfig['waitBroadcast']
     /** 定时推送时间（如 '08:30'），null 表示未设置（模板默认不使用，按需扩展） */
     scheduleTime?: string | null
 }

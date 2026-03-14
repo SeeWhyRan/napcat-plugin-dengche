@@ -14,7 +14,7 @@ import fs from 'fs';
 import path from 'path';
 import type { NapCatPluginContext, PluginLogger } from 'napcat-types/napcat-onebot/network/plugin/types';
 import { DEFAULT_CONFIG } from '../config';
-import type { PluginConfig, GroupConfig, ShoutCarGroupConfig, ShoutCarKeywordRule } from '../types';
+import type { PluginConfig, GroupConfig, ShoutCarGroupConfig, ShoutCarKeywordRule, WaitBroadcastGroupConfig } from '../types';
 
 // ==================== 配置清洗工具 ====================
 
@@ -75,6 +75,15 @@ function sanitizeConfig(raw: unknown): PluginConfig {
                         });
                     }
                     cfg.shoutCar = sc;
+                }
+
+                // 等车广播配置清洗
+                if (isObject((groupConfig as Record<string, unknown>).waitBroadcast)) {
+                    const wbRaw = (groupConfig as Record<string, unknown>).waitBroadcast as Record<string, unknown>;
+                    const wb: WaitBroadcastGroupConfig = {};
+                    if (typeof wbRaw.enabled === 'boolean') wb.enabled = wbRaw.enabled;
+                    if (typeof wbRaw.intervalSeconds === 'number') wb.intervalSeconds = wbRaw.intervalSeconds;
+                    cfg.waitBroadcast = wb;
                 }
 
                 // TODO: 在这里添加你的群配置项清洗

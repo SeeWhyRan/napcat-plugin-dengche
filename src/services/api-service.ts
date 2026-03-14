@@ -22,7 +22,7 @@ import type {
     PluginHttpResponse
 } from 'napcat-types/napcat-onebot/network/plugin/types';
 import { pluginState } from '../core/state';
-import type { GroupConfig, ShoutCarGroupConfig, ShoutCarKeywordRule } from '../types';
+import type { GroupConfig, ShoutCarGroupConfig, ShoutCarKeywordRule, WaitBroadcastGroupConfig } from '../types';
 
 /**
  * 注册 API 路由
@@ -91,6 +91,7 @@ export function registerApiRoutes(ctx: NapCatPluginContext): void {
                     max_member_count: group.max_member_count,
                     enabled: pluginState.isGroupEnabled(groupId),
                     shoutCar: cfg?.shoutCar || {},
+                    waitBroadcast: cfg?.waitBroadcast || {},
                 };
             });
 
@@ -158,6 +159,26 @@ export function registerApiRoutes(ctx: NapCatPluginContext): void {
                     shoutCar: {
                         ...(prev as GroupConfig).shoutCar,
                         ...nextSc,
+                    },
+                });
+            }
+
+            // 允许更新 waitBroadcast 子配置
+            if ('waitBroadcast' in body) {
+                const wbRaw = body.waitBroadcast;
+                const nextWb: WaitBroadcastGroupConfig = {};
+                if (wbRaw && typeof wbRaw === 'object' && !Array.isArray(wbRaw)) {
+                    const r = wbRaw as Record<string, unknown>;
+                    if (typeof r.enabled === 'boolean') nextWb.enabled = r.enabled;
+                    if (typeof r.intervalSeconds === 'number') nextWb.intervalSeconds = r.intervalSeconds;
+                }
+
+                const prev = pluginState.config.groupConfigs?.[String(groupId)] || {};
+                pluginState.updateGroupConfig(String(groupId), {
+                    ...prev,
+                    waitBroadcast: {
+                        ...(prev as GroupConfig).waitBroadcast,
+                        ...nextWb,
                     },
                 });
             }

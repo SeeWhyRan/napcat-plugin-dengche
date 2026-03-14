@@ -5,6 +5,7 @@ import { isAdmin } from '../utils/permission';
 import { sendReply } from '../utils/messaging';
 import { buildAtMessage, parseAtUserId, parseNumericIndex, renderWaitList } from './wait-utils';
 import { getSenderNickname, pruneGroupWaitList, saveWaitListData, tryGetGroupMemberDisplayName } from './wait-store';
+import { getWaitBroadcastIntervalSeconds, startOrRestartWaitBroadcast } from '../../services/wait-broadcast-service';
 
 /**
  * 处理等车相关命令
@@ -32,9 +33,9 @@ export async function handleDengcheCommand(
 
     const prefix = pluginState.config.commandPrefix || '/';
 
-    // 关闭情况下除了“等车 开/关/帮助”与“等车帮助”外其他都不触发
+    // 关闭情况下除了“等车 开/关/帮助”“等车帮助”“等车广播(管理员)”外其他都不触发
     if (!groupEnabled) {
-        if (cmd !== '等车' && cmd !== '等车帮助') return false;
+        if (cmd !== '等车' && cmd !== '等车帮助' && cmd !== '等车广播') return false;
         if (cmd === '等车') {
             const sub = args[1] || '';
             if (sub !== '开' && sub !== '关' && sub !== '帮助') return false;
@@ -62,6 +63,9 @@ export async function handleDengcheCommand(
         lines.push('管理员：');
         lines.push(`- 开启本群：${prefix}等车 开`);
         lines.push(`- 关闭本群：${prefix}等车 关`);
+        lines.push(`- 开启广播：${prefix}等车广播 开`);
+        lines.push(`- 关闭广播：${prefix}等车广播 关`);
+        lines.push(`- 设置广播间隔（秒）：${prefix}等车广播 间隔 600`);
         lines.push(`- 强制删除：${prefix}等车列表删除 1（序号从 1 开始）`);
         lines.push(`- 强制添加：${prefix}等车列表添加 123456 或 ${prefix}等车列表添加 @某人`);
         lines.push('');
@@ -69,6 +73,67 @@ export async function handleDengcheCommand(
 
         await sendReply(ctx, event, lines.join('\n'));
         pluginState.incrementProcessed();
+        return true;
+    }
+
+    // ==================== 管理员：等车广播配置 ====================
+    if (cmd === '等车广播') {
+        if (!isAdmin(event)) {
+            await sendReply(ctx, event, '×失败！只有管理员才能执行此操作');
+            return true;
+        }
+
+        const sub = args[1] || '';
+        if (sub === '开' || sub === '关') {
+            const enable = sub === '开';
+            const prev = pluginState.config.groupConfigs?.[groupKey] || {};
+            pluginState.updateGroupConfig(groupKey, {
+                ...prev,
+                waitBroadcast: {
+                    ...(prev as any).waitBroadcast,
+                    enabled: enable,
+                },
+            });
+
+            // 重启定时器
+            startOrRestartWaitBroadcast(ctx, groupKey);
+            const interval = getWaitBroadcastIntervalSeconds(groupKey);
+            await sendReply(ctx, event, enable ? `√已开启等车广播（间隔 ${interval}s）` : '√已关闭等车广播');
+            pluginState.incrementProcessed();
+            return true;
+        }
+
+        if (sub === '间隔') {
+            const secRaw = args[2];
+            const sec = secRaw ? Number(secRaw) : NaN;
+            if (!Number.isFinite(sec) || sec <= 0) {
+                await sendReply(ctx, event, '×失败！请提供合法的秒数，例如：/等车广播 间隔 600');
+                return true;
+            }
+
+            const prev = pluginState.config.groupConfigs?.[groupKey] || {};
+            pluginState.updateGroupConfig(groupKey, {
+                ...prev,
+                waitBroadcast: {
+                    ...(prev as any).waitBroadcast,
+                    intervalSeconds: sec,
+                },
+            });
+
+            // 重启定时器（应用新间隔）
+            startOrRestartWaitBroadcast(ctx, groupKey);
+            const interval = getWaitBroadcastIntervalSeconds(groupKey);
+            await sendReply(ctx, event, `√已设置等车广播间隔为 ${interval}s`);
+            pluginState.incrementProcessed();
+            return true;
+        }
+
+        await sendReply(ctx, event, [
+            '等车广播命令：',
+            `- 开启：${prefix}等车广播 开`,
+            `- 关闭：${prefix}等车广播 关`,
+            `- 间隔：${prefix}等车广播 间隔 600（单位：秒）`,
+        ].join('\n'));
         return true;
     }
 

@@ -31,6 +31,7 @@ import { buildConfigSchema } from './config';
 import { pluginState } from './core/state';
 import { handleMessage } from './handlers/message-handler';
 import { registerApiRoutes } from './services/api-service';
+import { initWaitBroadcastTimers } from './services/wait-broadcast-service';
 import type { PluginConfig } from './types';
 
 // ==================== 配置 UI Schema ====================
@@ -59,6 +60,9 @@ export const plugin_init: PluginModule['plugin_init'] = async (ctx) => {
 
         // 4. 注册 API 路由
         registerApiRoutes(ctx);
+
+        // 5. 初始化等车列表定时广播
+        initWaitBroadcastTimers(ctx);
 
         ctx.logger.info('插件初始化完成');
     } catch (error) {
